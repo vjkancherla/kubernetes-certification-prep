@@ -1,0 +1,551 @@
+Certified Kubernetes Application Developer (CKAD) Course 
+----------------------------------------------------------
+
+Udemy: https://www.udemy.com/course/certified-kubernetes-application-Developer
+
+EXCELLENT RESOURCE: https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+
+
+=========================
+PRE-REQ
+==========================
+You will need to be familiar with everything in the CKA course (certified_k8s_admin.txt)
+
+
+
+=================
+CONFIGURATION
+=================
+
+Service Accounts
+	- Service accounts are a mechanism for providing identity and access control to pods running within a cluster. 
+	  They allow pods to authenticate themselves and interact with the Kubernetes API server and other resources.
+	  
+	- They provide a way to grant specific permissions and access control to pods based on their roles and responsibilities.
+	
+	- Every namespace in a Kubernetes cluster comes with a default service account.
+
+	- When pods are created without specifying a service account, they are automatically associated with the default service account of their namespace.
+	
+	- Service Account Tokens:
+		- Each service account is associated with a unique token that can be used for authentication with the Kubernetes API server.
+		- The token is stored as a Secret in the same namespace as the service account.
+		- Pods can authenticate themselves to the Kubernetes API server using their associated service account tokens.
+		
+	- Authorization is typically controlled by  Role-Based Access Control (RBAC) policies, which define what resources 
+	  and actions service accounts can access.
+	  
+	- Service accounts are scoped to a specific namespace, meaning they can only interact with resources within that namespace.
+	
+	
+
+===================
+OBSERVABILITY
+===================
+
+Liveness Probes
+	- Liveness probes are used by the kubelet to check whether a container is still running or if it has encountered an issue.
+	- If the liveness probe fails, the kubelet restarts the container to restore it to a healthy state.
+	- Liveness probes help ensure the overall availability of your application by preventing pods from becoming stuck in a failed state.
+	
+
+Readiness Probes
+	- Readiness probes are used to by the kubelet determine whether a container is ready to accept incoming traffic.
+	- Containers that are not ready are temporarily removed from service, and traffic is redirected to healthy containers.
+	- Readiness probes help ensure that your application only receives traffic when it is fully operational, preventing users from interacting with partially started or unhealthy containers.
+	
+
+Startup Probes
+	- The kubelet uses startup probes to know when a container application has started. 
+	- Liveness and readiness probes do not start until it succeeds, making sure those probes don't interfere with the application startup. 
+	- Startup probes are usefule on slow starting containers, avoiding them getting killed by the kubelet before they are up and running.
+	
+
+Important points about probes:
+	- A common pattern for liveness probes is to use the same low-cost HTTP endpoint as for readiness probes, but with a higher failureThreshold. 
+	- Liveness probes must be configured carefully to ensure that they truly indicate unrecoverable application failure, for example a deadlock.
+	- The periodSeconds field specifies that the kubelet should perform a liveness probe every 5 seconds. 
+	  The initialDelaySeconds field tells the kubelet that it should wait 5 seconds before performing the first probe
+	
+	
+Types of Checks
+	- Exec (Command) Probe: 
+		- The Exec Probe runs a specified bash command inside the container.
+		- It considers the probe successful if the command returns a zero exit status (indicating success) and non-zero if the command returns an error.
+		====
+			exec:
+  		      command:
+  				- cat
+  				- /tmp/healthy
+		====
+		
+	 - TCP Probe:
+	 	- The TCP Probe checks whether a specific TCP port is open and accepting connections.
+	 	
+	 - HTTP Probe:
+	 	- The HTTP Probe sends an HTTP GET request to a specified path and port on the container.
+		- It considers the probe successful if it receives a response with a status code within a specified range (e.g., 200-399).
+		
+
+Monitoring Nodes, Pods and Containers
+	- Kubernetes Metrics Server 
+		- Metrics Server collects resource metrics from Kubelets and exposes them in Kubernetes apiserver through Metrics API 
+		  for use by Horizontal Pod Autoscaler and Vertical Pod Autoscaler. 
+	    - Metrics API can also be accessed by kubectl top
+	    
+	- KUBECTL TOP COMMANDS	
+		- kubectl top nodes --> Node Resource Utilization
+		- kubectl top pods --> Pod Resource Utilization
+		- kubectl top pod POD_NAME --containers  --> Resource util for a specific pod and its containers
+		- kubectl top pods -n mynamespace --> resource utilization of pods in a specific namespace
+		
+		
+	- kubectl logs -f <pod-name> #stream pod logs (stdout)
+	- kubectl logs -f my-pod -c my-container  # stream pod container logs (stdout, multi-container case)
+	
+
+=========================
+JOBS and CRONJOBS
+=========================
+
+Job
+	- A Job creates one or more Pods and will continue to retry execution of the Pods until a specified number of them successfully terminate. 
+	  As pods successfully complete, the Job tracks the successful completions.
+	  When a specified number of successful completions is reached, the task (ie, Job) is complete. 
+	  Deleting a Job will clean up the Pods it created. 
+	  Suspending a Job will delete its active Pods until the Job is resumed again.
+	- A simple case is to create one Job object in order to reliably run one Pod to completion.
+	- You can also use a Job to run multiple Pods in parallel.
+	
+	
+Important points for Configuring a Job
+	- "Parallelism" determines how many pods can run concurrently,
+	- "completions" specify how many pods must complete successfully before the Job is considered finished.
+	- "backoffLimit" is used to specify the number of retries before considering a Job as failed. The back-off limit is set by default to 6.
+	
+	
+CronJob
+	- A CronJob creates Jobs on a repeating schedule.
+	- One CronJob object is like one line of a crontab (cron table) file on a Unix system. 
+	  It runs a job periodically on a given schedule, written in Cron format.
+	  
+
+
+========================
+PERSISTING STATE
+========================
+
+StatefulSets
+	- StatefulSet is the workload API object used to manage stateful applications
+	- Unlike a Deployment, a StatefulSet maintains a sticky identity for each of its Pods.
+	  These pods are created from the same spec, but are not interchangeable: each has a persistent identifier that it maintains across any rescheduling.
+	
+	Using StatefulSets
+		- StatefulSets provide each pod with a stable and unique network identity
+		- Pods in a StatefulSet are created and scaled in a predictable and ordered manner
+		  Pod names are assigned based on their ordinal index (e.g., myapp-0, myapp-1, etc.).
+		  This order ensures that pods are started and stopped in sequence, making it suitable 
+		  for applications that rely on sequential startup or data migration.
+		- Each pod in a StatefulSet can request and use its own persistent storage, and the PVs 
+		  can be dynamically provisioned or statically assigned.
+		- If a pod in a StatefulSet fails or is deleted, it is automatically replaced by a new pod with the same ordinal index and identity.
+		- StatefulSets are often used in conjunction with Headless Services
+		- Each pod in a StatefulSet can be accessed using its DNS name, allowing clients to communicate directly with individual pods.
+		- Common use cases for StatefulSets include running databases (e.g., MySQL, PostgreSQL), message queues (e.g., RabbitMQ)
+	
+
+=============
+SECURITY
+=============
+
+Admissions Request
+	- It is a request made to the Kubernetes API server when a user attempts to create, update, or delete a resource in the cluster.
+
+Controllers
+	- In Kubernetes, controllers are control loops, written in go, that watch the state of your cluster, then make or request changes where needed. 
+	  Each controller tries to move the current cluster state closer to the desired state.
+
+
+Admissions Controller
+	- An admission controller intercepts admissions requests to the Kubernetes API server prior to persistence of the object, 
+	  but after the request is authenticated and authorized.
+	  
+	  EG:
+	  	[kubectl run nginx-test --image nginx] ---> [KubeAPIServer Authentication + Authorisation] ---> SEQ OF ADMISSIONS CONTROLLERS ---> Create Pod
+	  
+	- Admission controllers may be validating, mutating, or both. 
+	- Mutating controllers may modify related objects to the requests they admit; validating controllers may not.
+	- Admission controllers help enforce various policies, including security policies, resource quotas, naming conventions, and network policies.
+	- Admission controllers can also block custom verbs, such as a request connect to a Pod via an API server proxy
+	
+	IMPORTANT: Admission controllers do not (and cannot) block requests to read (get, watch or list) objects.
+	
+	
+Built-In Admissions Controllers
+	- Kubernetes includes a set of built-in admission controllers, such as 
+		- the NamespaceExists, NamespaceLifecycle, ResourceQuota, and PodSecurity controllers, among others.
+	
+	EG: NamespaceExists Controller: 
+		The admission controller checks all requests on namespaced resources other than Namespace itself. 
+		If the namespace referenced from a request doesn't exist, the request is rejected.
+
+
+Turn On / Off Admissions Controllers
+	- The Kubernetes API server flag enable-admission-plugins takes a comma-delimited list of admission control plugins t be enabled
+		- kube-apiserver --enable-admission-plugins=NamespaceLifecycle,LimitRanger ...
+		
+	- The Kubernetes API server flag disable-admission-plugins takes a comma-delimited list of admission control plugins to be disabled
+		- kube-apiserver --disable-admission-plugins=PodNodeSelector,AlwaysDeny ...
+		
+
+Validating vs Mutating Admissions Controllers
+
+Important: Mutating controllers are executed before validating controllers in the admission control flow.
+           Mutating admission controllers are executed first and can modify the request. 
+           After that, validating admission controllers check the request for policy compliance.
+
+	- Validating Admissions Controllers
+		- responsible for validating admission requests against predefined policies and rules.
+		- used for enforcing security policies, resource quotas, naming conventions, and other cluster-wide rules.
+		- Examples of built-in validating admission controllers include NamespaceLifecycle, LimitRanger, and PodSecurity.
+		
+	-  Mutating Admissions Controllers
+		- responsible for modifying or mutating admission requests before they are persisted to the cluster.
+		- They can change the content of the request to meet specific cluster requirements or defaults.
+		- Common use cases for mutating admission controllers include 
+			- injecting sidecar containers into pods
+			- setting default resource requests
+			- and adding annotations or labels to resources
+		- Examples of built-in mutating admission controllers include DefaultAdmissionController, AlwaysPullImages, and ServiceAccount.
+
+
+Validating and Mutating Admission Webhooks
+	- You can use Validating and Mutating Admission Webhooks to write your own, Custom, Admissions Controller and register them with the KubeAPIServer
+	- Allows you to enforce custom policies, validation rules, and request mutations when creating, updating, or deleting resources in the cluster.
+	- When an admission request is made to create, update, or delete a resource, the KubeAPIServer sends the admission request -
+	  to the registered, validating and Mutating webhooks, thus invoking our custom Admissions Controllers.
+	
+	
+API Versions
+	- Kubernetes defines different API versions for its resources, such as pods, services, deployments, and config maps.
+	- Each API version represents a specific set of features, fields, and behaviors for a resource.
+	- Over time, new API versions are created to accommodate new changes while maintaining backward compatibility with existing resources.
+	
+	- Versioning Scheme:
+		- each API version in Kubernetes is identified by a version identifier, typically represented 
+		  as vX, where X is a numerical value (e.g., v1, v1beta1, v1alpha1).
+		- The version identifier is used in resource manifests to specify which version of the API the resource is associated with.
+		
+	- Backward compatibility:
+		- Kubernetes maintains backward compatibility within a major version. 
+		  This means that resources created with an earlier version of a major version should continue to work with 
+		  subsequent minor and patch releases of the same major version.
+		  
+	- Deprecation and Removal:
+		- When new versions of resources or features are introduced, older versions may be deprecated.
+		- deprecated versions maintained for some time to allow users to transition to the new versions
+		- After deprecation, there is a timeline before the deprecated versions or features are eventually removed from the Kubernetes API
+		
+		
+Served API Version vs Stored API Version
+	- Served API Version:
+		- The "served API version" represents the API version of a resource that the Kubernetes API server 
+		  presents to clients when they query the server or make API requests.
+		- The served API version ensures that clients see a consistent and stable API surface, 
+		  even if multiple API versions of a resource exist in the cluster.
+		- The served API version is typically associated with the stable and recommended version of a resource.
+		  
+	- Stored API Version
+		- The "stored API version" represents the actual version of a resource that is stored in the cluster's etcd datastore.
+		- While the served API version provides a consistent view to clients, the stored API version allows 
+		  Kubernetes to maintain backward compatibility with older resources and configurations that were created using previous API versions.
+		- When a client interacts with the served API version of a resource, the Kubernetes API server internally translates 
+		  and stores the resource in the stored API version in etcd.
+
+
+KUBECTL Commands for view API versions
+	- View All API Versions
+		>> kubectl api-versions 
+	
+	- View API Versions for a Specific Resource Type
+		>> kubectl explain pods --api-version=''
+
+	- View API Versions for a Specific Group
+		>> kubectl get api-resources --api-group=apps
+
+
+KUBECTL CONVERT command
+	- kubectl convert command is used to convert Kubernetes resources from one API version to another. 
+	- This command can be useful when you need to update or migrate existing resource configurations to a 
+	   different API version due to changes in Kubernetes or specific requirements.
+	   
+	EG: kubectl convert -f my-pod.yaml --output-version=v1beta1
+		The kubectl convert command will read the input resource file (my-pod.yaml in this case), 
+		convert it to the specified API version (v1beta1), and print the converted config
+		
+
+==============================
+OPERATOR FRAMEWORK / PATTERN
+===============================
+
+Operators are software extensions to Kubernetes that make use of CUSTOM RESOURCES to manage applications and their components. 
+Operators follow Kubernetes principles, notably the control loop.
+
+High leve overview of what might an operator look like:
+------------
+Eg: FlightBooking Operator will have:
+	- A CUSTOM RESOURCE DEFINITION (CRD) for creating FlightTicket object
+	- A CUSTOM CONTROLLER, written in GO and deployed to the cluster as a Pod, that watches for 
+	  the creation, updation, deletion of FlightTicket objects, and executes code to get to a desired state 
+	(i.e., book a flight ticket, delete a flight ticket, etc)
+		
+------------
+1. A CUSTOM RESOURCE DEFINITON named FlightTicket, that you can use to create FlightTicket Objects on your cluster
+2. A Deployment that makes sure a Pod is running that contains the CUSTOM CONTROLLER  part of the operator.
+3. Controller code that queries the control plane to find out what FlightTicket resources are configured.
+
+DETAILED EXAMPLE
+
+FlightTicket CRD
+==================
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: flighttickets.example.com
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: example.com
+  
+  names:
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: FlightTicket
+    
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: flighttickets 
+    
+    # singular name to be used as an alias on the CLI and for display
+    singular: flightticket
+    
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+      - ft
+  
+  # either Namespaced or Cluster
+  scope: Namespaced
+  
+  versions:
+    - name: v1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+      
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              from:
+                type: string
+                description: Source of the flight.
+              to:
+                type: string
+                description: Destination of the flight.
+              numOfTickets:
+                type: integer
+              minimum: 1
+              description: Number of tickets to be booked.
+  subresources:
+    status: {}
+=================
+
+FlightTicket Object
+=================
+apiVersion: example.com/v1
+kind: FlightTicket
+metadata:
+  name: flight-ticket-1
+spec:
+  from: "New York"
+  to: "Los Angeles"
+  numOfTickets: 2
+=================
+
+Next steps are :
+1. Write a Custom Controller called FlightTicketController.go
+2. Create a docker image for the GO code
+3. Run the docker image as a container in a Pod on K8s 
+
+How the controller gets invoked/triggered:
+	Custom controllers in Kubernetes use the Kubernetes client libraries to watch for Custom Resource (CR) events. 
+	The watch mechanism allows controllers to be notified of changes to CRs in real-time, such as when a CR is created, updated, or deleted.
+	
+	
+======================
+Deployment Strategies
+=======================
+
+Recreate
+	- Terminate all Pods that are running the current version of the App AND THEN create new Pods that run new version of the APP
+	
+
+Rolling Update
+	- Gradually teminate and create a subset of the Pods, whilst ensuring that the service does not go down 
+	
+
+Blue-Green
+	::BLUE::
+	- A K8s Service with "Selector ==> app_version:v1"
+	- A Deployment with "Label ==> app_version:v1", "Replicas:5"
+	All requests are served by BLUE env
+	
+	::GREEN::
+	- A New Deployment with "Label ==> app_version:v2", "Replicas:5"
+	
+	To switch all traffic to GREEN env, update the Service object with "Selector ==> app_version:v2"
+	
+
+Canary
+	- A K8s Service with "Selector ==> app_version:v1"
+	- A Deployment with "Label ==> app_version:v1", "Replicas:4"
+	
+	::Start Canary Deployment::
+	- A New Deployment with "Label ==> app_version:v2", "Replicas:0"
+	- Update the Service object with "Selector ==> app_version:v1 + app_version:v2"
+		- Sevice will now forward requests to both versions, with 100% traffic sent to V1 at the moment
+	
+	- To send only 25% traffic to V2
+		- Scale V2 deployment from 0 to "1"
+		- Scale V1 deployment from 4 to 3
+	
+	- To send 50% traffic to V2
+		- Scale V2 deployment from 1 to 2
+		- Scale V1 deployment from 3 to 2
+		
+	- To send 100% traffic to V2
+		- Scale V2 deployment from 2 to 4
+		- Scale V1 deployment from 2 to 0
+	
+
+
+================
+Helm
+================
+
+Helm is package manager for K8s that allows you to package Kubernetes resources (such as pods, services, ConfigMaps, etc.) 
+into reusable, versioned packages called "Helm charts." These charts encapsulate all the necessary configurations 
+and dependencies for deploying an application or service.
+
+Helm Charts
+	- A Helm chart is a directory structure containing Kubernetes YAML files and a values.yaml file, 
+	  which allows you to customize the chart's default configurations.
+	  
+Release Management
+	- A release is an instance of a Helm chart deployed in a Kubernetes cluster. 
+	  Helm tracks releases, making it easy to upgrade, rollback, or uninstall them. 
+	  
+Customization with Values
+	- Helm charts can be customized using values specified in a values.yaml file or through command-line flags. 
+	- This flexibility allows you to configure different environments (e.g., development, staging, production) with the same chart.
+	
+Dependency Management
+	- Helm supports chart dependencies, enabling you to include other charts as dependencies in your primary chart.
+	
+Repository Management 
+	- Helm charts can be hosted in repositories, which are similar to package repositories. 
+	- You can set up your own private chart repository or use public repositories 
+	
+Templating Engine
+	- Helm uses a template engine called Go templates to generate Kubernetes manifests dynamically. 
+	- This allows you to reuse and parameterize configurations within your charts, making them more flexible and maintainable.
+	
+Upgrade and Rollback
+	- It maintains a history of releases and allows you to revert to a previous state if an upgrade fails or causes issues.
+	
+	
+Helm Commands:
+
+Using the installation of Prometheus as an Example
+	
+- Adding a Repo
+	- helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+	
+
+- Listing the charts in a Repo
+	- helm search repo prometheus-community
+	
+
+- Installing a chart 
+	- helm install my-prometheus \
+		prometheus-community/kube-prometheus-stack \
+		--namespace monitoring \
+		--set grafana.enabled=false
+	 
+	 : --set flag is used to override helm chart's default values
+	 : You can use the --set flag multiple times to specify multiple overrides if needed
+	 
+	 - helm install my-loki \
+		grafana/loki-stack \
+		--namespace monitoring \
+		-f values-files/loki-values.yaml
+	
+	: "-f" allows you to specify values in a YAML file
+	
+
+- Upgrading a existing release
+	- helm upgrade my-prometheus \                                                                                   
+		prometheus-community/kube-prometheus-stack \
+		--namespace monitoring \
+		-f values-files/prometheus-values.yaml
+	 
+
+- Listing releases
+	- helm list -A (all releases in all namespaces)
+	- helm list -n monitoring (only list releases in monitoring namespace)
+	
+
+- Get the status of a Release
+	- helm status my-prometheus -n monitoring
+	
+	
+- Get ALL the K8s Manifests created by the helm release
+	- helm get mainfest my-prometheus -n monitoring
+	
+
+- Get ALL the K8s Manifests created and ALL the values used for the release
+	- helm get all my-prometheus -n monitoring
+	
+
+- Generate all the templates locally without actually installing or upgrading a release
+	- helm template my-prometheus \
+	   prometheus-community/kube-prometheus-stack \
+	   -n monitoring \
+	   --set grafana.enabled=false
+	   
+
+- Using --debug flag
+	- Helm will display detailed debugging information as the release is installed or upgraded.
+	
+
+- Using --dry-run flag
+	- The --dry-run flag is used to simulate the installation or upgrade of a Helm release without actually performing the operation. 
+	  This flag is helpful when you want to see what changes would be made to the cluster's state without making any changes.
+	  
+EXAMPLE of using --debug and --dry-run flag together to gather more information or simulate changes without affecting the cluster's actual state
+	- helm upgrade my-prometheus \
+		prometheus-community/kube-prometheus-stack \
+		--namespace monitoring \
+		--set grafana.enabled=false \
+		--debug --dry-run
+	
+	
+- Get all the versions of a given Release
+	- helm history my-prometheus -n monitoring
+
+
+How does helm track and store info about releases so that it can rollback on demand?
+	- Helm persists release metadata in Secrets (default) or ConfigMaps, stored in the Kubernetes cluster. 
+	Every time your release changes, it appends that to the existing data. 
+	This provides Helm with the capability to rollback to a previous release.

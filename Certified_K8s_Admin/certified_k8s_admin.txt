@@ -1,0 +1,1046 @@
+Certified Kubernetes Administrator (CKA) Course 
+-------------------------------------------------
+
+Udemy: https://www.udemy.com/course/certified-kubernetes-administrator-with-practice-tests
+
+Github: https://github.com/kodekloudhub/certified-kubernetes-administrator-course
+
+KodeKloud: https://kodekloud.com/courses/labs-certified-kubernetes-administrator-with-practice-tests/
+
+EXCELLENT RESOURCE: https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+
+
+==================
+CORE CONCEPTS
+==================
+
+K8s Architecture
+--------------------
+Master Node
+	- Control Plane
+		- ETCD Cluster : A key-value store used to track the state of the cluster (which worker node has what)
+		- Kube Scheduler: Responsible for scheduling pods on worker nodes
+		- Kube Controller Manager: manages the following controller
+			- Node Controller : responsible for managing/onboarding worker nodes
+			- Replication Controller: responsible for ensuring that the correct no of pods are runnings
+		- Kube-apiserver: Primary management component. 
+						 All the comms between all the above services go through this. 
+						 Also, end-users and worker-nodes communicate with the cluster via this.
+
+Worker Nodes
+	- kublet: an agent that runs on each node to manage containers and the node. Receives info from Kube-apiserver
+	- kube-proxy: is a process that allows containers to use services to talk to each other.
+	
+
+Core Concepts
+------------------
+ETCD for beginners
+	- a strongly consistent and distributed key-value data store
+	
+	
+ETCD in K8s
+	- K8s uses ETCD as a backing store for ALL cluster data.
+	- Store of the information necessary for K8s to manage nodes, pods and services.
+	- Only the Kube-apiserver communicates with ETCD cluster
+	
+
+Kube-apiserver
+	- EVERYTHING THAT HAPPENS ON THE CLUSTER WILL GO THROUGH Kube-apiserver
+	- It is the API-Gateway that is the literal gateway to the Kubernetes cluster.
+	- It is the central touch point that is accessed by all users, automation, and components in the Kubernetes cluster
+	- Use Kubectl or "POST/GET" CURL requests to communicate with the Kube-apiserver endpoint
+	- For each request, it 
+		- authenticates and validates the request
+		- talks to ETCD to get the required info
+	
+	
+Kube Controller Manager
+	- Manages the Node Controller and Replication Controller
+	- Node Controller:
+		- monitors the status of nodes every 5 secs (by making calls to the Kube-apiserver)
+		- remediates, adds and removes nodes
+	- Replication Controller:
+		- monitors the stats of the pods
+		- responsible for ensuring that the correct no of pods are runnings
+		- adds and removes nodes as necessary
+		
+Kube Scheduler
+	- responsible for deciding which pod goes on which node
+	- finds the best node for each pod based on the pod's requirements (mem/cpu requirement, taint and tolerations, etc)
+	
+	
+Kubelet
+	- an agent that runs on each node to manage containers and the node
+	- register a node with the cluster
+	- receives instructions from Kube-apiserver and then adds/removes pods
+	- monitors the pods and reports back to Kube-apiserver
+
+	
+Kube-Proxy
+	- is a process that runs on each node
+	- is responsible to creating the network rules (in IP-Tables), on the node, for enabling a "service" to work
+	
+
+POD
+ 	- A pod is a collection of containers and its storage inside a node of a Kubernetes cluster. 
+ 	- Pods are the smallest deployable units of computing that you can create and manage in Kubernetes
+ 	- "kubectl run nginx --image nginx" will create a pod
+ 	
+
+ReplicaSets
+	- ReplicaSet is a Controller and can be considered as an replacement for Replication Controller
+	- A ReplicaSet's purpose is to maintain a stable set of replica Pods running at any given time
+	- A ReplicaSet is defined with fields, including a selector that specifies how to identify Pods it can acquire, 
+	  a number of replicas indicating how many Pods it should be maintaining, and a pod template specifying the data 
+	  of new Pods it should create to meet the number of replicas criteria. 
+	  A ReplicaSet then fulfills its purpose by creating and deleting Pods as needed to reach the desired number. 
+	  When a ReplicaSet needs to create new Pods, it uses its Pod template.
+	  
+===  
+NOTE: If you ever see an error like the below, then check that the "apiVersion:" field has the correct value
+error: resource mapping not found for name: "replicaset-1" namespace: "" from "replicaset-definition-1.yaml": no matches for kind "ReplicaSet" in version "v1"
+ensure CRDs are installed first
+===
+
+Deployments
+	- A Deployment provides declarative updates for Pods and ReplicaSets.
+	- A Deployment creates ReplicaSets, which in turn creates the Pods
+	- You describe a desired state in a Deployment, and the Deployment Controller changes the actual state 
+	  to the desired state at a controlled rate. You can define Deployments to create new ReplicaSets, or 
+	  to remove existing Deployments and adopt all their resources with new Deployments.
+	- Deployments can help to efficiently scale the number of replica pods, enable the rollout of updated 
+	  code in a controlled manner, or roll back to an earlier deployment version if necessary
+	  
+
+YAML files
+	- EVERY K8s object (deployment, replicaset, pod, service, etc) definition YAML file contains the following four attributes
+		- apiVersion
+		- kind
+		- metadata
+		- spec
+	  
+===
+NOTE: You can create a pod by using "kind: pod" in yaml, or by using "kind: replicaset", or by using "kind: deployment".
+The recommended way is to use "kind: deployment"
+===
+
+===
+Certification Tip
+
+1. Create an Nginx Pod
+>> kubectl run nginx --image=nginx
+
+2. Create the Yaml for creating Nginx Pod
+>> kubectl run nginx --image=nginx --dry-run=client -o yaml
+
+3. Create a deployment
+>> kubectl create deployment --image=nginx nginx
+
+4. Create the Yaml for creating a deployment
+>> kubectl create deployment --image=nginx nginx --dry-run=client -o yaml
+
+>> kubectl create deployment --image=nginx nginx --replicas=4 --dry-run=client -o yaml
+===
+
+
+Service
+	- Service is used to expose an application deployed on a set of pods using a single endpoint. 
+	  Services are introduced to provide reliable networking by bringing stable IP addresses and DNS names to ephemeral pods.
+	- In Kubernetes, each Pod gets its own internal IP address, but Pods are ephemeral.
+	  With the Service component you have a solution of a stable or static IP address that stays even when the Pod is destroyed
+	  
+
+Types of Service
+	1. NodePort Service
+		- NodePort service exposes a static port (the NodePort) each Node. Port range 30000-32767
+		  Each node proxies requests on that port (NodePort) into your service. 
+		  The service then forwards the requests to the Pods
+		- External client -> <node_IP:node_port> -> service -> pod
+		- The pods, which the NodePort service is exposing, can existing in multiple nodes
+		
+	2. ClusterIP Service
+		- This is the default type for service in Kubernetes
+		- As indicated by its name, this is just an address that can be used inside the cluster.
+		
+	3. LoadBalancer
+		- Creates a service like ClusterIP
+        - Opens a port in every node like NodePort
+        - Uses a LoadBalancer implementation from your cloud provider
+        
+    4. ExternalName
+    	- this service acts as a proxy and redirects the request to an external service sitting outside the cluster
+    	- instead of returning cluster-ip of this service, it returns CNAME record with value that mentioned in externalName: parameter of service.
+    		kind: Service
+			apiVersion: v1
+			metadata:
+  				name: my-service
+			spec:
+  				type: ExternalName
+  				externalName: my.database.example.com
+  	5. Headless
+  		- Unlike regular (clusterIP) services, which expose pods through a single virtual IP address and perform load balancing, 
+  		  headless services do not have a cluster IP and do not load balance traffic to pods. 
+  		  Instead, they are used primarily for purposes like service discovery and direct communication with individual pods.
+  		- You can create a Headless Service by explicitly specifying "None" for the cluster IP address (.spec.clusterIP)
+  		- For headless Services, a cluster IP is not allocated. There is no load balancing or proxying done by the platform for them.
+  		- When you create a Headless Service, Kubernetes automatically creates DNS records for the pods it selects.
+  		
+  		UseCases:
+  			- StatefulSets create pods with stable network identities, and Headless Services facilitate direct communication between these pods.
+  			- In database clusters, Headless Services are often used to enable applications to connect directly to database pods without an intermediate load balancer.
+	
+	
+Namespaces
+	- Namespaces provides a mechanism for isolating groups of resources within a single cluster
+	- Namespaces are a way to divide cluster resources between multiple users (via resource quota)
+	- Namespaces help separate a cluster into logical units. It helps granularly organize, allocate, manage, and secure cluster resources
+	- Namespaces are intended for use in environments with many users spread across multiple teams, or projects. 
+	  For clusters with a few to tens of users, you should not need to create or think about namespaces at all.
+	- Initial namespaces
+		- default
+		- kube-system
+		- kube-public
+	
+	- Use-Cases
+		- Isolation: use namespaces to create separation between projects and microservices. Activity in one namespace never affects the other namespaces.
+		- Development stages: if you use the same Kubernetes cluster for multiple stages of the development lifecycle, 
+		  it is a good idea to separate development, testing, and production environments. Ideally, you should use a separate cluster for each environment, 
+		  but if this is not possible, namespaces can create this separation.
+		- Permissions: You can define separate RBAC rules for each namespace, ensuring that only authorized roles can access the resources in the namespace.
+		- Resource control: you can define resource limits at the namespace level, ensuring each namespace has access to a certain amount of CPU and memory resources.
+	
+		
+	
+Imperative vs Declarative
+	- Imperative: running Kubectl commands to achieve the state that we want
+	- Declarative: creating YAML/Manifest files and using "kubectl apply" to achieve the state that we want
+	
+	
+=============================================
+SCHEDULING (HOW PODS ARE ASSIGNED TO NODES)
+=============================================
+
+Manual Scheduling (don't do this)
+	- add the "nodeName" attribute to Pod YAML definition and set its value to the name of a node
+	
+
+Labels, Selectors and Annotations
+	- Labels: are key/value pairs that are attached to objects, such as pod. Labels can be used to organize and to select subsets of objects
+	- Selectors: labels do not provide uniqueness. In general, we expect many objects to carry the same label(s).
+	             Via a label selector, the client/user can identify a set of objects. The label selector is the core grouping primitive in Kubernetes.
+	- Annotations: You can use Kubernetes annotations to attach arbitrary non-identifying metadata to objects. 
+	               Clients such as tools and libraries can retrieve this metadata.
+
+
+Taints and Tolerations
+	- Taints: We taint a Node to prevent undesirable Pods from landing on the said Node
+		eg: kubectl taint nodes node-1 app=blue;no-schedule
+		
+	- Tolerations: In order for a Pod to land on a tainted node, the Pod must be able to tolerate the taint. 
+				   We need to add tolerations to the Pod. The tolerations must exactly match the taints on the Node
+
+
+Taint Effects:
+	- NoSchedule: This means that no pod will be able to schedule onto Node unless it has a matching toleration.
+	- PreferNoSchedule: This is a "preference" or "soft" version of NoSchedule -- the system will try to avoid placing a pod that does not tolerate the taint on the node, but it is not required. 
+	- NoExecute: if a taint with effect NoExecute is added to a node, then any pods that do not tolerate the taint will be evicted immediately, and pods that do tolerate the taint will never be evicted.
+	
+
+IMPORTANT: Pods with tolerations can end up on Nodes that do not have any taints. So, if you want a Pod to end up on a certain node, use Node Affinity.
+
+
+Taints and Tolerations Example
+-------------------------------
+1. There are three nodes: Node-A, Node-B and Node-C
+2. Node-A has the following taint: app=data-processor:NoSchedule
+3. Node-B and Node-C have no taints
+4. There are two apps: App-X and App-Y
+5. App-X has the following tolerance: app=data-processor:NoSchedule
+6. The Kube Scheduler, when scheduling App-X, can place the app on Node-A, Node-B or Node-C
+7. The Kube Scheduler, when scheduling App-Y, can place the app only on Node-B or Node-C, because the app does not tolerate the taint on Node-A
+8. Note that, even though App-X has the tolerance for the taint on Node-A, it can end up on any of the Nodes.
+7. If we want to ensure that App-X ends up only on Node-A, then we need to use Node-Affinity
+
+
+NodeSelector
+	- Used for ensuring that a specific Pod ends up on a specific Node
+	- Less powerful/flexible when compared to NodeAffinity
+	- You assign labels to a Node
+	- You then set the "NodeSelector" attribute in the Pod YAML file to match the labels set on the node
+	- This ensure that the Pod is scheduled on the labels matching Node
+	- Limitations:
+		- Cannot use AND/OR conditions select multiple nodes
+			eg: place a pod on nodes which have labels color=blue OR color=red
+		- Cannot use NOT condition
+			eg: place a pod on nodes which DO NOT have label color=green
+			
+
+NodeAffinity
+	- Used for ensuring that a specific Pod ends up on a specific Node
+	- More powerful/flexible when compared to NodeSelector. Can use AND/OR/NOT/IN options.
+	- You assign labels to a Node
+	- You then set the "Affinity" attribute in the Pod YAML file to match the labels set on the node
+	- This ensure that the Pod is scheduled on the labels matching Node	
+
+
+NodeAffinity Effects
+	- requiredDuringSchedulingIgnoredDuringExecution: The scheduler can't schedule the Pod unless the rule is met.
+	- preferredDuringSchedulingIgnoredDuringExecution: The scheduler tries to find a node that meets the rule. If a matching node is not available, the scheduler still schedules the Pod.
+	
+	
+Taints and Tolerations + NodeAffinity Example
+-----------------------------------------------
+1. There are three nodes: Node-A, Node-B and Node-C
+2. Node-A has the following taints and labels: 
+	taint: app=app-blue:NoSchedule
+	label: color=blue
+3. Node-B has the following taints and labels: 
+	taint: app=app-red:NoSchedule
+	label: color=red
+4. Node-C has the following taints and labels: 
+	taint: app=app-green:NoSchedule
+	label: color=green
+5. There are three Pods: App-Blue, App-Red, App-Green
+6. App-Blue has the following toleration and nodeAffinity:
+	toleration: app=app-blue:NoSchedule
+	nodeAffnity: color=blue
+7. App-Red has the following toleration and nodeAffinity:
+	toleration: app=app-re:NoSchedule
+	nodeAffnity: color=red
+8. App-Green has the following toleration and nodeAffinity:
+	toleration: app=app-green:NoSchedule
+	nodeAffnity: color=green
+	
+The above configuration ensures that 
+	- App-Blue will be scheduled on Node-A. And, that Node-A will not accept any other Pods
+	- App-Red will be scheduled on Node-B. And, that Node-B will not accept any other Pods
+	- App-Green will be scheduled on Node-C. And, that Node-C will not accept any other Pods
+
+
+Resource Requirements and Limits
+	- When you specify a Pod, you can optionally specify how much of each resource a container needs. 
+	   The most common resources to specify are CPU and memory (RAM); there are others.
+	- Pod Resource management is achieved using two attributes - "Requests" and "Limits"
+	
+	- Requests Attribute
+		- "Requests" attribute is used to set a "soft" limit for CPU/Memory
+		- Requests are what the container is guaranteed to get.
+		- For example, if you set a memory request of 256 MiB for a container, and that container is in a Pod scheduled to a Node with 8GiB of memory and no other Pods, then the container is guaranteed 256 MiB of memoyy, but can try to use more RAM.
+	
+	- Limits Attribute
+		-  Limits, on the other hand, make sure a container never goes above a certain value. 
+			The container is only allowed to go up to the limit, and then it is restricted.
+			
+	IMPORTANT: Requests and limits are on a per-container basis. While Pods usually contain a single container, it’s common to see Pods with multiple containers as well. Each container in the Pod gets its own individual limit and request, 
+	
+	IMPORTANT: To control what requests and limits a container can have, you can set quotas at the Container level and at the Namespace level.
+	
+	
+	- Default Requests and Limits
+		- You can define default values for Requests and Limits that all Pods can use in a given NameSpace
+		- For the POD to pick up those defaults you must have first set those as default values for request and limit by creating a LimitRange in the namespace.
+	
+	IMPORTANT: the default behavior for resource requirements and limits in Kubernetes is to have no specific constraints or limits on CPU and memory usage for pods
+	           Which means that Pods can consume an unlimited amount of CPU and memory
+
+Daemonset
+	- A DaemonSet ensures that all  Nodes run a copy of a Pod. 
+	  As nodes are added to the cluster, Pods are added to them. As nodes are removed from the cluster, those Pods are garbage collected
+	- UseCase: a Logging agent or Monitoring agent Pod
+	- DemonSet uses NodeAffinity to schedule a pod on each node
+	
+	
+Static Pods
+	- Static Pods are managed directly by the kubelet daemon on a specific node, without the API server observing them.
+	- Unlike Pods that are managed by the control plane (for example, a Deployment); instead, the kubelet watches each static Pod (and restarts it if it fails).
+	- The kubelet automatically tries to create a mirror Pod on the Kubernetes API server for each static Pod. 
+	   This means that the Pods running on a node are visible on the API server, but cannot be controlled from there
+	- Use the staticPodPath: <the directory> field in the kubelet configuration file, which periodically scans the directory and creates/deletes static Pods as YAML/JSON files appear/disappear there.
+	- The kubelet configuration file is located at - /var/lib/kubelet/config/kubeconfig.yaml
+	- In order to identify static pods using kubectl command, run "kubectl get pods -A". The static pods will have "-<node-name>" appended to the pod name
+	
+Example: creating a Static Pod
+-------------------------------
+1. Create a Pod manifest file
+	- kubectl run static-busybox --image=busybox --dry-run=client -o yaml  --command -- "sleep 1000" > s.yaml
+2. Copy the manifest file to "staticPodPath" directory. The staticPodPath: <the directory> field is defined in the kubelet configuration file (/var/lib/kubelet/config/kubeconfig.yaml)
+3. Run "kubectl get pods" to see the static pod. 
+4. Note that the pod's name will have "-<node-name>" appended.
+>> controlplane ~ ➜  kubectl get pods
+NAME                          READY   STATUS             RESTARTS     AGE
+static-busybox-controlplane   0/1     CrashLoopBackOff   1 (6s ago)   9s
+
+
+Custom Schedulers
+	- Kubernetes ships with a default scheduler. If the default scheduler does not suit your needs you can implement your own scheduler.
+	- You can even run multiple schedulers simultaneously alongside the default scheduler and instruct Kubernetes what scheduler to use for each of your pods
+	- When creating pods you can direct them to be scheduled by either the default scheduler or the one you deployed. 
+	   In order to schedule a given pod using a specific scheduler, specify the name of the scheduler in that pod spec
+	  
+
+Scheduler Profiles
+	- A scheduling Profile allows you to configure the different stages of scheduling in the kube-scheduler/custom-scheduler
+	- For a given scheduler, you can define multiple "profiles" for it. Each profile can has its own custom/tailored behaviour for each scheduling-stage. 
+	
+	
+	
+=================================
+Application Lifecycle Management
+==================================
+
+Rolling Updates
+	- Rolling updates allow Deployment updates to take place with zero downtime by incrementally adding new Pods and gradually terminating old Pods. 
+	- Rolling updates only work with Deployments
+	- Rolling updates is the default update strategy. The other option is "recreate"
+	- Rolling updates allows for a "Rollback"
+	
+Rolling Updates Example
+------------------------
+1. create a Deployment yaml file - deployment.yaml
+	- replicas: 3
+	- image: nginx1.2
+2. create the Deployment
+	- kubectl create -f deployment.yaml
+3. K8s creates a 
+	- new release-vision = v1
+	- new ReplicaSet for the deployment and creates 3 Pod replicas
+4. Update the Deployment yaml file - deployment.yaml
+	- replicas: 3
+	- image: httpd2.4
+5. Update the deployment
+	- kubectl apply -f deployment.yaml
+6. K8s will
+	- create a new relsease-vision = v2
+	- create another/new ReplicaSet for the deployment and creates 3 Pod replicas, incrementally
+	- instruct the old ReplicaSet to terminate Pods, incrementally
+
+Rolling Updates Commands
+	- kubectl rollout status deployment/<deployment_name>
+	- kubectl rollout history deployments/<deployment_name>
+	- kubectl rollout pause deployment/<deployment_name>
+	- kubectl rollout resume deployment/<deployment_name>
+	- kubectl rollout undo deployment/<deployment_name> <-- RollBack to previous version
+	- kubectl rollout undo deployment/<deployment_name>  --to-revision=1 <--- RollBack to specific version
+
+
+
+>>Docker "Command (CMD)" and "EntryPoint"<<
+
+Consider this dockerfile:
+========
+FROM ubutu
+
+CMD [ "sleep", "5" ]
+========
+
+We create an image called ubuntu-sleeper from the dockerfile.
+
+When we create a container using the ubuntu-sleeper image (docker run ubuntu-sleeper), the container starts, run "sleep 5" command, and then exists
+
+THE "COMMAND" OPTION IS USED FOR DEFINING THE COMMAND THAT GETS EXECUTED WHEN THE CONTAINER STARTS. 
+THE WHOLE PURPOSE OF THE CONTAINER IS TO RUN THE COMMAND. THE CONTAINER EXITS WHEN THE COMMAND COMPLETES
+
+We can override the "Command" value specified in the dockerfile by -
+>> docker run ubuntu-sleeper bash
+Now, instead of running "sleep 5", the container run "bash"
+
+
+Consider this dockerfile:
+========
+FROM ubutu
+
+ENTRYPOINT [ "sleep" ]
+
+CMD [ "5" ]
+========
+
+We create an image called ubuntu-sleeper from the dockerfile.
+
+When we create a container using the ubuntu-sleeper image (docker run ubuntu-sleeper), the container starts, run "sleep 5" command, and then exists.
+This appears to work the same way as just defining the "Command" option, however, here is the difference -
+
+THE ENTRYPOINT OPTION IS USED FOR DEFINING THE COMMAND THAT GETS EXECUTED WHEN THE CONTAINER STARTS. 
+AND, THE COMMAND OPTION HERE IS USED TO PASS A DEFAULT PARAMETER VALUE TO THE COMMAND DEFINED BY ENTRYPOINT.
+
+>> docker run ubuntu-sleeper
+	- runs "sleep 5" command
+
+>> docker run ubuntu-sleeper 300
+	- runs "sleep 300" command
+
+
+Consider this dockerfile:
+========
+FROM ubutu
+
+ENTRYPOINT [ "/bin/bash" ]
+
+CMD [ "/tmp/my_init_script.sh" ]
+========
+
+We create an image called ubuntu-test from the dockerfile.
+
+>> docker run ubuntu-test
+	- runs "/bin/bash /tmp/my_init_script.sh" command
+	
+>> docker run ubuntu-test /tmp/my_new_init_script.sh
+	- runs "/bin/bash /tmp/my_new_init_script.sh" command
+
+<<--->>
+
+
+Overriding Docker's CMD and ENTRYPOINT in Kubernetes
+	- in a K8s Yaml file, the "command" attribute is used to override Docker's "ENTRYPOINT"
+	- in a K8s Yaml file, the "args" attribute is used to override Docker's "CMD"
+	
+Consider this dockerfile:
+========
+FROM ubutu
+
+ENTRYPOINT [ "/bin/bash" ]
+
+CMD [ "/tmp/my_init_script.sh" ]
+========
+
+Consider this K8s Pod manifest
+==========
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my_ubuntu_pod
+spec:
+  containers:
+  - name: ubuntu-test
+    image: ubuntu-test
+    command: ["/bin/python3"]   <==== overrides ENTRYPOINT
+    args: ["/tmp/my_init_script.py"]  <==== overrides CMD
+==========
+
+
+Environment Variables
+	- When you create a Pod, you can set environment variables for the containers that run in the Pod. 
+		To set environment variables, include the "env" or "envFrom" field in the configuration file.
+		
+Consider this K8s Pod manifest
+==========
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my_ubuntu_pod
+spec:
+  containers:
+  - name: ubuntu-test
+    image: ubuntu-test
+    env:
+    - name: GREETING
+      value: "Warm greetings to"
+    - name: HONORIFIC
+      value: "The Most Honorable"
+    - name: NAME
+      value: "Kubernetes"
+    command: ["echo"]
+    args: ["$(GREETING) $(HONORIFIC) $(NAME)"]	
+=========
+
+
+ConfigMaps
+	- ConfigMaps are a Kubernetes mechanism that let you inject configuration data into application pods
+	- used to store non-confidential data in key-value pairs
+	- Pods can consume ConfigMaps as environment variables, command-line arguments, or as configuration files in a volume
+	- ConfigMaps can be injected into Pods as files in a volume mounted on one or more of its containers or as container environment variable.
+	- When injected into Pods a files in a volume mounted on containers, each key in the ConfigMap is made available as file with the "key's value" as the content of the file
+	
+Consider this K8s ConfigMap manifest
+===========
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: game-demo
+data:
+  # property-like keys; each key maps to a simple value
+  player_initial_lives: "3"
+  ui_properties_file_name: "user-interface.properties"
+
+  # file-like keys
+  game.properties: |
+    enemy.types=aliens,monsters
+    player.maximum-lives=5    
+  user-interface.properties: |
+    color.good=purple
+    color.bad=yellow
+    allow.textmode=true
+===========
+
+
+Environment Variables from ConfigMaps
+	- in the Pod manifest, use "envfrom" field to load the whole configmap as env vars
+	- in the Pod mainfest, use "env.value.configMapKeyRef" field to load a specific key from a configmap as an env var
+
+eg:
+===========
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: special-config
+  namespace: default 
+data:
+  SPECIAL_LEVEL: very
+  SPECIAL_TYPE: charm
+---  
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my_ubuntu_pod
+spec:
+  containers:
+  - name: ubuntu-test
+    image: ubuntu-test
+    envfrom:
+    - configMapRef:
+       name: special-config
+===========
+	
+
+Secrets
+	- Secrets are similar to ConfigMaps but are specifically intended to hold confidential data
+	- Data inside Secrets is Encoded (Base64) NOT ENCRYPTED
+	- When creating Secrets Yaml, the data values must be Base64 encoded
+	- Secrets can be injected into Pods as files in a volume mounted on containers or as container environment variable.
+Note: If using AWS/GCP, it better to store the secretes in the cloud native password stores and then reading them in K8s using ExternalSecretsOperator
+	- When injected into Pods a files in a volume mounted on containers, each key in the Secret is made available as file with the "key's value" as the content of the file
+
+Types of Secrets 
+	- Opaque Secrets:
+		- Used for storing arbitrary key-value pairs of sensitive data.
+	- Docker Registry Secrets:
+		- Authenticate and access private container images from Docker registries.
+	- Service Account Tokens:
+		- Automatically created per pod for authenticating with the Kubernetes API server.
+	- TLS Secrets:
+		- Store TLS certificates and private keys for securing pod-to-pod or ingress communication.
+	- SSH Secrets:
+		- Store SSH keys for secure authentication to Git repositories or SSH services.
+	- External Secrets:
+		- Integrates with external secret management systems like HashiCorp Vault or AWS Secrets Manager for dynamic secret retrieval.
+
+	
+Multi-Container Pods
+	- a single pod can contain multiple containers that share the same network namespace and 
+	  can communicate with each other (via localhost) as if they were running on the same host
+	- Containers in the same pod share the same IP address, port space, and local hostname. This simplifies inter-container communication.
+	
+Multi-container Pods Design Patterns
+	- Sidecar Pattern:
+		- In this pattern, a sidecar container runs alongside the main application container and enhances or extends its functionality.
+		- Use cases include logging, monitoring, authentication, and data syncing.
+		- Example: A sidecar container collecting application logs and forwarding them to a centralized logging system.
+	- Adapter Pattern:
+		- The adapter pattern involves using an adapter container to modify or adapt data before it reaches the main application container.
+		- It's useful for transforming data formats, handling protocol conversions, or performing data enrichment.
+		- Example: An adapter container that converts incoming data from one format to another before passing it to the main application.
+	- Ambassador Pattern:
+		- In the ambassador pattern, a container acts as an intermediary between the main application and external services, 
+		  providing a layer of abstraction or routing.
+		- It's helpful for handling service discovery, load balancing, and security policies.
+		- Example: An ambassador container handling TLS termination and load balancing for incoming traffic to the main application. 
+		
+Init containers
+	- Init containers are used to perform one-time setup tasks that need to be completed before the main application containers start.
+	- Common use cases include database schema initialization, downloading configuration files, waiting for external services to become available, 
+	   and performing data migrations.
+	- Init containers are executed sequentially, one after another, in the order they are defined in the pod's specification.
+	- Each init container must successfully complete before the next one starts.
+	- Only after all init containers have successfully completed can the main containers in the pod start
+	- If an init container fails (returns a non-zero exit code), the pod's startup is halted, and the pod is considered to have failed initialization.
+	
+	
+============
+SECURITY	
+============
+
+Types of Users of Who Access KubeAPIServer:
+	- Humans, using KubeCTL or CURL
+		- administrators
+		- developers
+	- Bots
+		- Service Accounts
+
+	
+Authentication on KubeAPIServer:
+	- [Deprecated] use static password or token files on KubeAPIServer, and allow users to make CURL requests by passing the credentials as headers
+	- use SSL certificates
+	- use Service Account Token
+	
+
+A note on TLS in K8s:
+	- All comms between all K8s components - KubeAPIServer, kube-scheduler, kubelet, ETCD - use mTLS and certificates for communication
+	- The KubeAPIServer acts as a server for comms with kube-scheduler, kubelet, kube-proxy
+		- The KubeAPIServer has a server cert and issues client certs which kube-scheduler, kubelet, kube-proxy use for comms with KubeAPIServer
+	- The KubeAPIServer acts as a client for comms with ETCD
+		- The ETCD has a server cert and issues client certs which KubeAPIServer uses for comms with ETCD
+		
+
+How to grant Admin access to a new user - "my-admin-user" - to K8s
+[Covers the Certificate API, and Authentication using SSL cert]
+	- Generate a Private Key for the New User:
+		- >> openssl genpkey -algorithm RSA -out my-admin-user.key
+	- Create a Certificate Signing Request (CSR):
+		- >> openssl req -new -key my-admin-user.key -out my-admin-user.csr -subj "/CN=my-admin-user/O=my-admin-group"
+	- Submit the CSR to Kubernetes CA:
+		- You can do this by creating a Kubernetes CertificateSigningRequest (CSR) resource, and include the base64 encoded CSR from prev step
+		- >> cat my-admin-user.csr | base64 -w 0
+		- >> kubectl apply -f my-admin-user-csr.yaml
+	- Approve the CSR
+		- >> kubectl get csr
+		- >> kubectl certificate approve my-admin-user-csr
+	- Retrieve the Signed Certificate:
+		- >> kubectl get csr my-admin-user-csr -o jsonpath='{.status.certificate}' | base64 -d > my-admin-user.crt
+	- Now, you have generated the necessary client certificate (my-admin-user.crt) and private key (my-admin-user.key) for your new user. 
+	  You can use these files to create a kubeconfig file 
+	  
+	- Create a ClusterRoleBinding to grant admin access to "my-admin-user
+	======
+	apiVersion: rbac.authorization.k8s.io/v1
+	kind: ClusterRoleBinding
+	metadata:
+  		name: my-admin-user-cluster-admin
+	subjects:
+		- kind: User
+  		  name: my-admin-user
+  		  apiGroup: rbac.authorization.k8s.io
+	roleRef:
+  		kind: ClusterRole
+  		name: cluster-admin
+  		apiGroup: rbac.authorization.k8s.io
+  	=======
+
+
+How to use an Service Account - "my-service-account" - to access K8s
+[Covers Service Account creation, RBAC and KubeCofig]
+	- Create a Service Account named my-service-account
+	- Bind the Service Account to a Role or ClusterRole
+	- Update kubeconfig with an entry for the Service Account
+		- >> 
+		======
+		# Set up credentials for the Service Account named "my-service-account"
+		kubectl config set-credentials my-service-account \
+
+  		# Specify the authentication token for the Service Account
+  		--token=$(
+
+    	# Retrieve the secret associated with the Service Account in a specific namespace ("<namespace>")
+    	kubectl get secret -n <namespace> \
+
+      	# Use a subshell to get the name of the secret associated with the Service Account
+      	$(kubectl get sa my-service-account -n <namespace> -o jsonpath='{.secrets[0].name}') \
+
+      	# Extract the token data from the secret and decode it from base64 format
+      	-o jsonpath='{.data.token}' | base64 -d
+ 		 )
+		======
+	- Update kubeconfig
+		- kubectl config set-context my-service-account-context --cluster=<cluster-name> --user=my-service-account --namespace=<namespace>
+		- kubectl config use-context my-service-account-context
+	
+	
+KubeConfig
+	- is a configuration file used by the Kubernetes (K8s) command-line tool, kubectl, to interact with Kubernetes clusters.
+	- It provides the necessary information to authenticate and communicate with a Kubernetes cluster.
+	- The following are the sections of a KubeConfig file:
+		- Clusters
+			- one or more clusters, each associated with a unique cluster name
+		- Users 
+			- Users in a kubeconfig file represent the identity used to authenticate with the Kubernetes cluster.
+		- Contexts
+			- Contexts tie together a cluster, a user, and a namespace. They define which cluster and user to use and which namespace to work within.
+		The current-context field in the kubeconfig specifies the default context to use when running kubectl commands.
+		
+		
+Authorisation in K8s
+	- Authorization in Kubernetes (K8s) is the process of determining what actions and operations are allowed for 
+	  users, groups, and service accounts within a cluster. It defines access policies and controls to ensure that 
+      users can only perform actions they are explicitly allowed to perform.
+      
+
+Authorisation Modes
+	1. Role-Based Access Control (RBAC):
+		Defines fine-grained access policies by specifying roles and bindings for users, groups, and service accounts within namespaces or clusters.
+	2. Attribute-Based Access Control (ABAC):
+		Legacy mechanism allowing access control decisions based on attributes from user client certificates but no longer recommended.
+	3. Node Authorization (NodeAuthz):
+		Controls which nodes can join the cluster, ensuring only trusted nodes with valid credentials are allowed.
+	4. Webhook Authorization:
+		Enables integration of external authorization systems, like LDAP or custom providers, for making access control decisions
+
+NOTE-1: To configure the authorization mode in your Kubernetes cluster, you typically modify the kube-apiserver configuration by specifying 
+the desired mode in the --authorization-mode flag or configuration file.
+
+NOTE-2: n Kubernetes, the alwaysAllow and alwaysDeny authorization modes are two special authorization modes that can be used for 
+specific purposes, such as debugging, testing, or implementing strict access control policies.
+
+
+Authorisation With RBAC (Role Based Access Controls)
+	- RBAC in Kubernetes consists of the following key components:
+		- Roles: Roles define a set of permissions that can be applied to specific resources within a namespace.
+		- RoleBindings: RoleBindings associate a set of roles with specific users, groups, or service accounts within a namespace.
+		- ClusterRoles: ClusterRoles are similar to Roles but are not limited to a single namespace. They define permissions that apply cluster-wide.
+		- ClusterRoleBindings: ClusterRoleBindings associate ClusterRoles with users, groups, or service accounts across the entire cluster.
+
+	- RBAC Rules:
+		- Each Role or ClusterRole can contain multiple rules, which define specific permissions.
+		- Rules consist of the following fields:
+			Verbs: Verbs represent actions (e.g., get, list, create, delete, etc.) that are allowed or denied.
+			API Groups: API groups are used to specify which API groups the rule applies to. Common examples include "" (for core resources) and apps, batch (for specific extensions).
+			Resources: Resources are Kubernetes objects (e.g., pods, services, secrets) to which the rule applies.
+			Resource Names: Optionally, you can specify the names of specific resources to which the rule applies.
+	
+	Important:
+	 - Roles and RoleBindings are namespaced resources, meaning they apply only to resources within a specific namespace.
+	 - ClusterRoles and ClusterRoleBindings are cluster-wide resources. They can be used to define permissions that span multiple namespaces.
+
+	- Default Roles and RoleBindings:
+		- Kubernetes has some built-in default Roles and RoleBindings, such as "cluster-admin" and "view".
+		- The "cluster-admin" role provides superuser-like access across the entire cluster.
+		
+
+Pre-Req: Security and Linux Capabilities on Docker
+	- Docker runs aspects of a container in unique Linux Namespaces, so that they are isolated from other containers and the host
+		- Namespaces used are: User NS, PID NS, Net NS, MNT NS, UTS NS, IPC NS
+	- By default, Docker runs all processes in a Container as Root user. This can be changed whilst creating a image by using the "User" parameter.
+	- Docker implements a set of security features (User NS) that limits the abilities of the root user within the container.
+       So the root user within the container isn't really like the root user on the host. 
+       The root user inside a container is mapped to a non-privileged user on the host.
+    - By default, Docker runs a container with a limited set of Linux capabilities. So, the processes running within the container
+		do not have the privileges to say reboot the host or perform operations
+	- If you wish to override this behavior and provide additional privileges than what is available, use the "cap add" option in the Docker run command.
+	
+
+Security Contexts
+  - Security context (securityContext directive) is a configuration that defines the security settings and privileges for a pod or container.
+	- Pod-level Security Context:
+		At the pod level, you can define security settings that apply to all containers within the pod, unless overridden at the container level.
+	- Container-level Security Context:
+		You can further refine security settings for individual containers within a pod, overriding any pod-level settings.
+	- Capabilities:
+		Kubernetes allows you to specify Linux capabilities for containers. 
+		These capabilities control the set of privileged operations that a container can perform. 
+		You can add or drop capabilities as needed.
+	- Run As User and Group:
+		You can set the user and group under which a container runs. This can help limit the permissions of a container, 
+		especially if it doesn't need to run as the root user.
+		Eg: To prevent a container from running as root, set the runAsNonRoot field to true. This ensures that the container will not start as the root user.
+	- Security Extensions:
+		Kubernetes also provides extensions like OPA-Gatekeeper, Kyverno, and PodSecurity admission controllers, 
+		which allow you to enforce more fine-grained security policies and validate security context settings at admission time.
+
+
+Network Policies
+	- Network Policies in Kubernetes provide a way to define and control network traffic within a Kubernetes cluster. 
+	  They allow you to specify rules that govern how pods can communicate with each other and with external resources. 
+	- Network Policies are used to control the flow of network traffic to and from pods. 
+	- Network Policies are scoped to a specific namespace. They only affect pods within the same namespace. 
+	- Pod Selector: 
+		- Network Policies use labels and selectors to target pods. You specify a set of pods to which the policy applies by using labels and selectors. 
+		  Pods that match the selector are subject to the policy rules.
+	- Ingress and Egress Rules: 
+	   Network Policies consist of two types of rules: ingress and egress.
+		 - Ingress Rules: These rules define the allowed incoming traffic to pods that match the policy's selector.
+		 - Egress Rules: These rules define the allowed outgoing traffic from pods that match the policy's selector.
+	- Default deny all ingress traffic
+		- You can create a "default" ingress isolation policy for a namespace by creating a NetworkPolicy that 
+		  selects all pods but does not allow any ingress traffic to those pods.
+		  ====
+		  apiVersion: networking.k8s.io/v1
+		  kind: NetworkPolicy
+		  metadata:
+  			name: default-deny-ingress
+		  spec:
+           podSelector: {}
+           policyTypes:
+            - Ingress
+		  ====
+
+		  
+===========
+Storage
+===========
+
+Pre-Req: Docker Layers
+	- A Docker image is built up from a series of layers.
+	- Each layer represents an instruction in the image’s Dockerfile.
+	- Each layer except the very last one is read-only
+	- The layers are stacked on top of each other.
+	- When you create a new container, you add a NEW WRITABLE LAYER on top of the underlying layers.
+		This layer is often called the “container layer”.
+	- All changes made to the running container, such as writing new files, modifying existing files, and deleting files, are written to this thin writable container layer.
+
+Pre-Req: Docker Layers and Containers
+	- The major difference between a container and an image is the top writable layer.
+	- All writes to the container that add new or modify existing data are stored in this writable layer.
+	- When the container is deleted, the writable layer is also deleted. The underlying image remains unchanged.
+	- IMPORTANT ** Because each container has its own writable container layer, and all changes are stored in this container layer,
+	  multiple containers can share access to the same underlying image and yet have their own data state.
+
+Pre-Req: Storage in Docker
+	- By default all NEW files created inside a container are stored on a writable container layer.
+	- The data doesn’t persist when that container no longer exists
+	- A STORAGE DRIVER can be used to write data directly to the host filesystem
+	- Docker has two options for containers to store files on the host machine, so that the files are persisted even after the container stops:
+		- Volumes : data is stored in a part of the host filesystem which is managed by Docker (/var/lib/docker/volumes/ on Linux).
+		- Bind mounts: data be stored anywhere on the host system.
+      Note that there is another option: "tmpfs"
+      	- tmpfs mounts are stored in the host system’s memory only, and are never written to the host system’s filesystem
+
+
+K8s Persistent Volumes
+	- A PersistentVolume (PV) is a piece of PHYSICAL STORAGE in the cluster/node that has been provisioned by an administrator or dynamically provisioned using Storage Classes.
+	- PVs have a lifecycle independent of any individual Pod that uses the PV
+	- PVs are not directly attached to a Pod. We use PVCs for that.
+	- EG: Create a dir /mnt/data on the host-node and allocate 10Gi to it
+	====
+	apiVersion: v1
+	kind: PersistentVolume
+	metadata:
+ 		name: task-pv-volume
+  	 	labels:
+    		type: local
+	spec:
+  		storageClassName: manual
+  		capacity:
+    		storage: 10Gi
+  		accessModes:
+   			 - ReadWriteOnce
+  		hostPath:
+   		   path: "/mnt/data"
+	====
+
+
+K8s Persistent Volume Claims
+	- A PersistentVolumeClaim (PVC) is a request for storage by a user
+	- When a PVC is created, K8s tries to find an already created, unbound, PV to match the specs in the PVC
+	- EG:
+	=====
+		apiVersion: v1
+		kind: PersistentVolumeClaim
+		metadata:
+  			name: task-pv-claim
+		spec:
+  			storageClassName: manual
+  			accessModes:
+    			- ReadWriteOnce <--- This must match an existing, unbound PV
+  			resources:
+    			requests:
+      				storage: 3Gi <-- There must be a existing, unbound PV, whose size is >= 3Gi
+	=====
+	- You can mount a PVC as a volume to a Pod
+
+
+StorageClasses
+	- A StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+	- StorageClass is a Kubernetes storage mechanism that lets you dynamically provision persistent volumes (PV) in a Kubernetes cluster.
+	- Different "classes" might map to quality-of-service levels, or to backup policies, or to arbitrary policies determined by the cluster administrators.
+	- StorageClasses are used, usually, for provisioning storage on Cloud providers
+	- When using StorageClasses, you do not need to create a PV.
+		You can directly create a PVC and reference the StorageClass.
+		A PV will be automatically created.
+
+
+
+=============
+Networking
+=============
+
+Pre-Req: Docker Networking
+	- Docker’s networking subsystem is pluggable, using drivers. Several drivers exist by default, and provide core networking functionality:
+		- Host: For standalone containers, remove network isolation between the container and the Docker host, and use the host’s networking directly.
+		- Bridge: The default network driver. A bridge network uses a software bridge which allows containers connected to the same bridge 
+		           network to communicate, while providing isolation from containers which are not connected to that bridge network.
+		- None: For this container, disable all networking
+
+Pre-Req: CNI (Container Network Interface)
+	- CNI is a framework for dynamically configuring networking resources.
+	- CNI Plugins are built to implement the framework
+	- A CNI plugin is responsible for inserting a network interface into the container network namespace (e.g., one end of a virtual ethernet (veth) pair) and making any necessary changes on the host (e.g., attaching the other end of the veth into a bridge).
+
+
+Pod Networking
+	- Every Pod has a unique IP address
+	- Every Pod is able to communicate with every other Pod on the same node
+	- Every Pod is able to communicate with every other Pod on other nodes with NAT
+	- The Kubelet is responsible for Pod networking. See Kubelet's "--cni-conf-dir"
+	- The Kubelet is configured to load a CNI Plugin. See Kubelet's "--network-plugin"
+	- To see the CIDR range allocated to Pods,
+		>> kubectl describe node/node01
+		  look for PodCIDR
+
+
+Service Networking
+	- The Kube Proxy is responsible for setting up the networking of Services
+	- See Kube-Proxy's "--proxy-mode" (usually set to IpTables) to be how it sets up service networking
+		OR
+		See kubectl describe configmap/kube-proxy -n kube-system
+	- To see the CIDR range allocated to Services,
+		>> kubectl describe pod/kube-apiserver-controlplane -n kube-system
+			look for --service-cluster-ip-range
+
+
+DNS resolution is K8s
+	- K8s automatically setups up a DNS servers (CoreDNS)
+	- All services within a NameSpace are accessible using:
+		- my-service
+		- my-service.svc
+	- IF you need to access a SVC in a different NS:
+		- my-service.<namespace>
+		- my-service.<namespace>.svc
+	- All SVCs can also be accessed using:
+		- <service-name>.<namespace-name>.svc.cluster.local
+	- "cluster.local" is the top-level domain in CoreDNs
+	- All Pods can be accessed using:
+		- <IP-pod-with-dash-instead-of-dot>.<namespace-name>.pod.cluster.local
+
+CoreDNS
+	- CoreDNS is a DNS server. It is written in Go.
+	- It is automatically installed
+	- Each Pod has an entry for the DNS nameserver in /etc/resolv.conf
+	- The Kubelet's config also contains the nameserver info for DNS nameserver
+
+
+Ingress
+	- Ingress exposes HTTP and HTTPS routes from outside the cluster to services within the cluster
+	- Traffic routing is controlled by rules defined on the Ingress resource.
+	- EG:
+	====
+	apiVersion: networking.k8s.io/v1
+	kind: Ingress
+	metadata:
+	  name: minimal-ingress
+	  annotations:
+	    nginx.ingress.kubernetes.io/rewrite-target: /
+	spec:
+	  rules:
+	  - http:
+	      paths:
+	      - path: /pay
+	        pathType: Prefix
+	        backend:
+	          service:
+	            name: pay-service
+	            port:
+              number: 8080
+				- path: /stream
+					pathType: Prefix
+					backend:
+						service:
+							name: stream-service
+							port:
+							number: 8080
+	====
+	- In AWS, an Ingress resource creates an ALB with ListenerRules and Target-Groups
+	- A "DefaultBackend" is handles traffic that matches no rules in the Ingress
+	
+	
+	Rewrite Target Annotation
+		- the ingress definition above will result in the following rewrites
+			- example.com/pay rewrites to example.com/
+			- example.com/pay/ rewrites to example.com/
+			- example.com/pay/something/something rewrites to example.com/

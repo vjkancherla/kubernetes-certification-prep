@@ -1,0 +1,176 @@
+CKA
+----
+
+Storage
+-------
+
+Pre-Req: Docker Layers
+	- A Docker image is built up from a series of layers.
+	- Each layer represents an instruction in the image’s Dockerfile.
+	- Each layer except the very last one is read-only
+	- The layers are stacked on top of each other.
+	- When you create a new container, you add a NEW WRITABLE LAYER on top of the underlying layers.
+		This layer is often called the “container layer”.
+	- All changes made to the running container, such as writing new files, modifying existing files, and deleting files, are written to this thin writable container layer.
+
+Pre-Req: Docker Layers and Containers
+	- The major difference between a container and an image is the top writable layer.
+	- All writes to the container that add new or modify existing data are stored in this writable layer.
+	- When the container is deleted, the writable layer is also deleted. The underlying image remains unchanged.
+	- IMPORTANT ** Because each container has its own writable container layer, and all changes are stored in this container layer,
+	  multiple containers can share access to the same underlying image and yet have their own data state.
+
+Pre-Req: Storage in Docker
+	- By default all NEW files created inside a container are stored on a writable container layer.
+	- The data doesn’t persist when that container no longer exists
+	- A STORAGE DRIVER can be used to write data directly to the host filesystem
+	- Docker has two options for containers to store files on the host machine, so that the files are persisted even after the container stops:
+		- Volumes : data is stored in a part of the host filesystem which is managed by Docker (/var/lib/docker/volumes/ on Linux).
+		- Bind mounts: data be stored anywhere on the host system.
+      Note that there is another option: "tmpfs"
+      	- tmpfs mounts are stored in the host system’s memory only, and are never written to the host system’s filesystem
+
+
+K8s Persistent Volumes
+	- A PersistentVolume (PV) is a piece of PHYSICAL STORAGE in the cluster/node that has been provisioned by an administrator or dynamically provisioned using Storage Classes.
+	- PVs have a lifecycle independent of any individual Pod that uses the PV
+	- PVs are not directly attached to a Pod. We use PVCs for that.
+	- EG: Create a dir /mnt/data on the host-node and allocate 10Gi to it
+	====
+	apiVersion: v1
+	kind: PersistentVolume
+	metadata:
+ 		name: task-pv-volume
+  	 	labels:
+    		type: local
+	spec:
+  		storageClassName: manual
+  		capacity:
+    		storage: 10Gi
+  		accessModes:
+   			 - ReadWriteOnce
+  		hostPath:
+   		   path: "/mnt/data"
+	====
+
+
+K8s Persistent Volume Claims
+	- A PersistentVolumeClaim (PVC) is a request for storage by a user
+	- When a PVC is created, K8s tries to find an already created, unbound, PV to match the specs in the PVC
+	- EG:
+	=====
+		apiVersion: v1
+		kind: PersistentVolumeClaim
+		metadata:
+  			name: task-pv-claim
+		spec:
+  			storageClassName: manual
+  			accessModes:
+    			- ReadWriteOnce <--- This must match an existing, unbound PV
+  			resources:
+    			requests:
+      				storage: 3Gi <-- There must be a existing, unbound PV, whose size is >= 3Gi
+	=====
+	- You can mount a PVC as a volume to a Pod
+
+
+StorageClasses
+	- A StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+	- StorageClass is a Kubernetes storage mechanism that lets you dynamically provision persistent volumes (PV) in a Kubernetes cluster.
+	- Different "classes" might map to quality-of-service levels, or to backup policies, or to arbitrary policies determined by the cluster administrators.
+	- StorageClasses are used, usually, for provisioning storage on Cloud providers
+	- When using StorageClasses, you do not need to create a PV.
+		You can directly create a PVC and reference the StorageClass.
+		A PV will be automatically created.
+
+
+Networking
+-----------
+
+Pre-Req: Docker Networking
+	- Docker’s networking subsystem is pluggable, using drivers. Several drivers exist by default, and provide core networking functionality:
+		- Host: For standalone containers, remove network isolation between the container and the Docker host, and use the host’s networking directly.
+		- Bridge: The default network driver. A bridge network uses a software bridge which allows containers connected to the same bridge 
+		           network to communicate, while providing isolation from containers which are not connected to that bridge network.
+		- None: For this container, disable all networking
+
+Pre-Req: CNI (Container Network Interface)
+	- CNI is a framework for dynamically configuring networking resources.
+	- CNI Plugins are built to implement the framework
+	- A CNI plugin is responsible for inserting a network interface into the container network namespace (e.g., one end of a virtual ethernet (veth) pair) and making any necessary changes on the host (e.g., attaching the other end of the veth into a bridge).
+
+
+Pod Networking
+	- Every Pod has a unique IP address
+	- Every Pod is able to communicate with every other Pod on the same node
+	- Every Pod is able to communicate with every other Pod on other nodes with NAT
+	- The Kubelet is responsible for Pod networking. See Kubelet's "--cni-conf-dir"
+	- The Kubelet is configured to load a CNI Plugin. See Kubelet's "--network-plugin"
+	- To see the CIDR range allocated to Pods,
+		>> kubectl describe node/node01
+		  look for PodCIDR
+
+
+Service Networking
+	- The Kube Proxy is responsible for setting up the networking of Services
+	- See Kube-Proxy's "--proxy-mode" (usually set to IpTables) to be how it sets up service networking
+		OR
+		See kubectl describe configmap/kube-proxy -n kube-system
+	- To see the CIDR range allocated to Services,
+		>> kubectl describe pod/kube-apiserver-controlplane -n kube-system
+			look for --service-cluster-ip-range
+
+
+DNS resolution is K8s
+	- K8s automatically setups up a DNS servers (CoreDNS)
+	- All services within a NameSpace are accessible using:
+		- my-service
+		- my-service.svc
+	- IF you need to access a SVC in a different NS:
+		- my-service.<namespace>
+		- my-service.<namespace>.svc
+	- All SVCs can also be accessed using:
+		- <service-name>.<namespace-name>.svc.cluster.local
+	- "cluster.local" is the top-level domain in CoreDNs
+	- All Pods can be accessed using:
+		- <IP-pod-with-dash-instead-of-dot>.<namespace-name>.pod.cluster.local
+
+CoreDNS
+	- CoreDNS is a DNS server. It is written in Go.
+	- It is automatically installed
+	- Each Pod has an entry for the DNS nameserver in /etc/resolv.conf
+	- The Kubelet's config also contains the nameserver info for DNS nameserver
+
+
+Ingress
+	- Ingress exposes HTTP and HTTPS routes from outside the cluster to services within the cluster
+	- Traffic routing is controlled by rules defined on the Ingress resource.
+	- EG:
+	====
+	apiVersion: networking.k8s.io/v1
+	kind: Ingress
+	metadata:
+	  name: minimal-ingress
+	  annotations:
+	    nginx.ingress.kubernetes.io/rewrite-target: /
+	spec:
+	  rules:
+	  - http:
+	      paths:
+	      - path: /pay
+	        pathType: Prefix
+	        backend:
+	          service:
+	            name: pay-service
+	            port:
+              number: 8080
+				- path: /stream
+					pathType: Prefix
+					backend:
+						service:
+							name: stream-service
+							port:
+							number: 8080
+	====
+	- In AWS, an Ingress resource creates an ALB with ListenerRules and Target-Groups
+	- A "DefaultBackend" is handles traffic that matches no rules in the Ingress

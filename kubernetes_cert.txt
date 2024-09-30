@@ -1,0 +1,7 @@
+Kubernetes certification
+
+https://kodekloud.com/learning-path-containers/
+
+https://www.udemy.com/course/certified-kubernetes-administrator-with-practice-tests/
+
+Exam simulator: https://killer.sh/
