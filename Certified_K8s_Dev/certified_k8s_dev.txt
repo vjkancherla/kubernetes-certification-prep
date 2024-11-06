@@ -408,13 +408,12 @@ Blue-Green
 	
 
 Canary
-	- A K8s Service with "Selector ==> app_version:v1"
-	- A Deployment with "Label ==> app_version:v1", "Replicas:4"
+	- A K8s Service with "Selector ==> app:my_app"
+	- A Deployment with "Label ==>  app:my_app, app_version:v1", "Replicas:4"
 	
 	::Start Canary Deployment::
-	- A New Deployment with "Label ==> app_version:v2", "Replicas:0"
-	- Update the Service object with "Selector ==> app_version:v1 + app_version:v2"
-		- Sevice will now forward requests to both versions, with 100% traffic sent to V1 at the moment
+	- A New Deployment with "Label ==>  app:my_app, app_version:v2", "Replicas:0"
+	- Sevice will now forward requests to both versions, with 100% traffic sent to V1 at the moment
 	
 	- To send only 25% traffic to V2
 		- Scale V2 deployment from 0 to "1"
