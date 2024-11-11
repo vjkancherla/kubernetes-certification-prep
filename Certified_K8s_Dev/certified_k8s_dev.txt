@@ -50,7 +50,7 @@ Liveness Probes
 	
 
 Readiness Probes
-	- Readiness probes are used to by the kubelet determine whether a container is ready to accept incoming traffic.
+	- Readiness probes are used to by the kubelet to determine whether a container is ready to accept incoming traffic.
 	- Containers that are not ready are temporarily removed from service, and traffic is redirected to healthy containers.
 	- Readiness probes help ensure that your application only receives traffic when it is fully operational, preventing users from interacting with partially started or unhealthy containers.
 	
@@ -147,7 +147,8 @@ StatefulSets
 		  This order ensures that pods are started and stopped in sequence, making it suitable 
 		  for applications that rely on sequential startup or data migration.
 		- Each pod in a StatefulSet can request and use its own persistent storage, and the PVs 
-		  can be dynamically provisioned or statically assigned.
+		  can be dynamically provisioned or statically assigned. 
+		  For this, We need to use "volumeClaimTemplates" field in the StatefulSet config.
 		- If a pod in a StatefulSet fails or is deleted, it is automatically replaced by a new pod with the same ordinal index and identity.
 		- StatefulSets are often used in conjunction with Headless Services
 		- Each pod in a StatefulSet can be accessed using its DNS name, allowing clients to communicate directly with individual pods.
