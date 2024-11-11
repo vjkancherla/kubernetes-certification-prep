@@ -36,7 +36,7 @@ Service Accounts
 	  and actions service accounts can access.
 	  
 	- Service accounts are scoped to a specific namespace, meaning they can only interact with resources within that namespace.
-	
+          To allow a ServiceAccount to access resources on other namespaces, a ClusterRole and ClusterRoleBinding must be configured.
 	
 
 ===================
