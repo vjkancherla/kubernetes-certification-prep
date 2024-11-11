@@ -177,7 +177,7 @@ Admissions Controller
 	- Admission controllers may be validating, mutating, or both. 
 	- Mutating controllers may modify related objects to the requests they admit; validating controllers may not.
 	- Admission controllers help enforce various policies, including security policies, resource quotas, naming conventions, and network policies.
-	- Admission controllers can also block custom verbs, such as a request connect to a Pod via an API server proxy
+	- Admission controllers can also block custom verbs, such as a request to connect to a Pod via an API server proxy
 	
 	IMPORTANT: Admission controllers do not (and cannot) block requests to read (get, watch or list) objects.
 	
