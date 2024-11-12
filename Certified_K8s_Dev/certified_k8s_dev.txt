@@ -292,10 +292,13 @@ Enable Or Disable An Kubernetes API
 		- add command-line option: --runtime-config=batch/v1=false
 
 
-KUBECTL CONVERT command
+KUBECTL CONVERT plugin/command
 	- kubectl convert command is used to convert Kubernetes resources from one API version to another. 
 	- This command can be useful when you need to update or migrate existing resource configurations to a 
 	   different API version due to changes in Kubernetes or specific requirements.
+	
+	- Install Kubectl convert plugin first:
+		- https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-kubectl-convert-plugin
 	   
 	EG: kubectl convert -f my-pod.yaml --output-version=v1beta1
 		The kubectl convert command will read the input resource file (my-pod.yaml in this case), 
