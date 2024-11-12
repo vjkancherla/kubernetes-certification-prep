@@ -228,7 +228,7 @@ Validating and Mutating Admission Webhooks
 	
 	
 API Versions
-	- Kubernetes defines different API versions for its resources, such as pods, services, deployments, and config maps.
+	- Kubernetes defines different API versions for all its resources (pods, services, deployments, config maps, etc)
 	- Each API version represents a specific set of features, fields, and behaviors for a resource.
 	- Over time, new API versions are created to accommodate new changes while maintaining backward compatibility with existing resources.
 	
@@ -244,7 +244,7 @@ API Versions
 		  
 	- Deprecation and Removal:
 		- When new versions of resources or features are introduced, older versions may be deprecated.
-		- deprecated versions maintained for some time to allow users to transition to the new versions
+		- deprecated versions are maintained for some time to allow users to transition to the new versions
 		- After deprecation, there is a timeline before the deprecated versions or features are eventually removed from the Kubernetes API
 		
 		
