@@ -275,6 +275,23 @@ KUBECTL Commands for view API versions
 		>> kubectl get api-resources --api-group=apps
 
 
+Enable Or Disable An Kubernetes API
+	- Specific API versions can be turned on or off by passing --runtime-config=api/<version> as a command line argument to the API server. 
+	- see:
+		- https://kubernetes.io/docs/tasks/administer-cluster/enable-disable-api/
+		- Search for "--runtime-config" in https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
+	- also see:
+		- https://kubernetes.io/docs/reference/using-api/#enabling-or-disabling 
+	
+	EG: Enable the v1alpha1 version for "rbac.authorization.k8s.io" API group
+		- update /etc/kubernetes/manifests/kube-apiserver.yaml 
+		- add command-line option: --runtime-config=rbac.authorization.k8s.io/v1alpha1=true
+		
+	EG: DISABLE the v1 version for "batch" API group
+		- update /etc/kubernetes/manifests/kube-apiserver.yaml 
+		- add command-line option: --runtime-config=batch/v1=false
+
+
 KUBECTL CONVERT command
 	- kubectl convert command is used to convert Kubernetes resources from one API version to another. 
 	- This command can be useful when you need to update or migrate existing resource configurations to a 
