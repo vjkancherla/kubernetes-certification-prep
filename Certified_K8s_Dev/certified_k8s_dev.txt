@@ -312,10 +312,10 @@ OPERATOR FRAMEWORK / PATTERN
 Operators are software extensions to Kubernetes that make use of CUSTOM RESOURCES to manage applications and their components. 
 Operators follow Kubernetes principles, notably the control loop.
 
-High leve overview of what might an operator look like:
+High level overview of what might an operator looks like:
 ------------
 Eg: FlightBooking Operator will have:
-	- A CUSTOM RESOURCE DEFINITION (CRD) for creating FlightTicket object
+	- A CUSTOM RESOURCE DEFINITION (CRD) for creating FlightTicket objects
 	- A CUSTOM CONTROLLER, written in GO and deployed to the cluster as a Pod, that watches for 
 	  the creation, updation, deletion of FlightTicket objects, and executes code to get to a desired state 
 	(i.e., book a flight ticket, delete a flight ticket, etc)
@@ -325,9 +325,10 @@ Eg: FlightBooking Operator will have:
 2. A Deployment that makes sure a Pod is running that contains the CUSTOM CONTROLLER  part of the operator.
 3. Controller code that queries the control plane to find out what FlightTicket resources are configured.
 
-DETAILED EXAMPLE
 
-FlightTicket CRD
+===DETAILED EXAMPLE===
+
+FlightTicket CUSTOM RESOURCE DEFINITION (CRD)
 ==================
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -381,6 +382,7 @@ spec:
   subresources:
     status: {}
 =================
+
 
 FlightTicket Object
 =================
