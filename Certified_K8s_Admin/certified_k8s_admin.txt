@@ -28,7 +28,7 @@ Master Node
 						 Also, end-users and worker-nodes communicate with the cluster via this.
 
 Worker Nodes
-	- kublet: an agent that runs on each node to manage containers and the node. Receives info from Kube-apiserver
+	- kublet: an agent that runs on each node to manage containers and the node. Receives info (i.e., what action to perform) from Kube-apiserver
 	- kube-proxy: is a process that allows containers to use services to talk to each other.
 	
 
@@ -40,7 +40,7 @@ ETCD for beginners
 	
 ETCD in K8s
 	- K8s uses ETCD as a backing store for ALL cluster data.
-	- Store of the information necessary for K8s to manage nodes, pods and services.
+	- It is a  store of the information necessary for K8s to manage nodes, pods and services.
 	- Only the Kube-apiserver communicates with ETCD cluster
 	
 
@@ -62,7 +62,7 @@ Kube Controller Manager
 	- Replication Controller:
 		- monitors the stats of the pods
 		- responsible for ensuring that the correct no of pods are runnings
-		- adds and removes nodes as necessary
+		- adds and removes pods as necessary
 		
 Kube Scheduler
 	- responsible for deciding which pod goes on which node
@@ -325,20 +325,22 @@ Resource Requirements and Limits
 	- Requests Attribute
 		- "Requests" attribute is used to set a "soft" limit for CPU/Memory
 		- Requests are what the container is guaranteed to get.
-		- For example, if you set a memory request of 256 MiB for a container, and that container is in a Pod scheduled to a Node with 8GiB of memory and no other Pods, then the container is guaranteed 256 MiB of memoyy, but can try to use more RAM.
+		- For example, if you set a memory request of 256 MiB for a container, and that container is in a Pod scheduled to a 
+		  Node with 8GiB of memory and no other Pods, then the container is guaranteed 256 MiB of memory, but can try to use more RAM.
 	
 	- Limits Attribute
 		-  Limits, on the other hand, make sure a container never goes above a certain value. 
 			The container is only allowed to go up to the limit, and then it is restricted.
 			
-	IMPORTANT: Requests and limits are on a per-container basis. While Pods usually contain a single container, it’s common to see Pods with multiple containers as well. Each container in the Pod gets its own individual limit and request, 
+	IMPORTANT: Requests and limits are on a per-container basis. While Pods usually contain a single container, it’s common to see Pods with multiple containers as well. 
+	           Each container in the Pod gets its own individual limit and request, 
 	
 	IMPORTANT: To control what requests and limits a container can have, you can set quotas at the Container level and at the Namespace level.
 	
 	
 	- Default Requests and Limits
 		- You can define default values for Requests and Limits that all Pods can use in a given NameSpace
-		- For the POD to pick up those defaults you must have first set those as default values for request and limit by creating a LimitRange in the namespace.
+		- For the POD to pick up those defaults you must have first set those as default values for request and limit by creating a LimitRange resource in the namespace.
 	
 	IMPORTANT: the default behavior for resource requirements and limits in Kubernetes is to have no specific constraints or limits on CPU and memory usage for pods
 	           Which means that Pods can consume an unlimited amount of CPU and memory
